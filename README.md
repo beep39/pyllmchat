@@ -10,9 +10,7 @@ Character cards can be loaded with <code>chat.char.load</code>
 
 Prompt used in chat uses <code>chat.template</code>
 
-Built-in variables are similar to SillyTavern 
-
-Additional variables:
+Built-in variables are similar to SillyTavern. Additional variables:
 
 <code>{{history}}</code> inserts chat history truncated to <code>max_context_length</code>
 
@@ -20,7 +18,7 @@ Additional variables:
 
 Custom variables can be registered with <code>chat.reg_var</code> to inject dynamic information into context.
 
-<code>chat.prompt</code> also uses template and can be used to extract information about character state/intentions.
+<code>chat.prompt</code> supports same template format and can be used to extract information about character state/intentions.
 
 <code>chat.emotion</code> can be used to clasify emotion of character response.
 
