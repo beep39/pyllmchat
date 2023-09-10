@@ -1,6 +1,7 @@
-from os import listdir
+from os import listdir, path, makedirs
 import struct, json
 from base64 import b64decode
+import requests
 
 class char_desc:
     def __init__(self):
@@ -33,13 +34,55 @@ class char_desc:
                         f.seek(l+4-6,1)
                         continue
                     text = b64decode(f.read(l-6)).decode('UTF-8')
-                    data = json.loads(text)
-                    break
+                    return self._load_json(text)
             except:
                 return False
-            return self.load_data(data)
+            return self._load_json(data)
 
-    def load_data(self, data):
+    def download(self, url):
+        base = 'chub.ai/characters/'
+        try:
+            o = url.index(base)
+            url = url[o+len(base):].split('/')
+            url = '/'.join(url[:2])
+        except ValueError:
+            pass
+        if not '/' in url:
+            return None
+
+        chub_url = 'https://api.chub.ai/api/characters/download'
+        data = {'format': 'tavern','fullPath': url}
+        r = requests.post(chub_url, json=data, stream=True)
+        t = char_desc()
+        t._load_data(r.content)
+        if not path.exists(self.dir):
+            makedirs(self.dir)
+        with open(path.join(self.dir, t.name)+'.png', 'wb') as f:
+            f.write(r.content)
+        return t.name
+
+    def _load_data(self, data):
+        if data[:8] != b'\x89PNG\r\n\x1a\n':
+            return False
+        offset = 8
+        while offset < len(data):
+            l = struct.unpack(">I",data[offset:offset+4])[0]
+            offset += 4
+            if data[offset:offset+4] != b'tEXt':
+                offset += l+8
+                continue
+            offset += 4
+            if data[offset:offset+6] != b'chara\x00':
+                offset += l+4
+                continue
+            offset += 6
+            text = b64decode(data[offset:offset+l-6]).decode('UTF-8')
+            return self._load_json(text)
+
+    def _load_json(self, text):
+        data = json.loads(text)
+        if 'data' in data:
+            data = data['data']
         self.name = data.get('name')
         self.description = data.get('description')
         self.scenario = data.get('scenario')

@@ -17,6 +17,7 @@ class chat:
         self.user = user_desc()
         self.char = char_desc()
         self.backend = backend
+        self.history = []
         self.emotion_classifier = None
         self.system = None
         self.template = default_template
@@ -27,30 +28,30 @@ class chat:
         self.reg_var('random', lambda args=['']: random.choice(args))
 
     def start(self):
-        self.lines = []
-        greeting = None
+        self.history = []
+        greeting = 'Hello'
         if self.char.greeting:
             greeting = self.char.greeting
             if not isinstance(greeting, str):
                 greeting = random.choice(greeting)
             greeting = self._replace(greeting)
-            self.lines.append(self.char.name+': '+greeting)
+            self.history.append(self.char.name+': '+greeting)
         return greeting
 
     def say(self, text, on_stream=None, name='{{user}}', answer_as='{{char}}'):
-        self.lines.append(self._replace(name+': '+text))
+        self.history.append(self._replace(name+': '+text))
         if answer_as:
-            self.lines.append(self._replace(answer_as) + ': ')
+            self.history.append(self._replace(answer_as) + ': ')
             return self.regenerate(on_stream)
 
     def regenerate(self, on_stream=None):
-        self.lines[-1] = self.lines[-1].split(':',1)[0] + ': '
+        self.history[-1] = self.history[-1].split(':',1)[0] + ': '
         stop = '\n'+self.user.name+':'
         result = self.prompt(self.template, stop, on_stream)
         if not result:
             return result
         result = self._replace(result)
-        self.lines[-1] += result
+        self.history[-1] += result
         return result
 
     # prompt without modifying chat history
@@ -77,7 +78,7 @@ class chat:
                 result=l+result
             return result
         if '{{history}}' in prompt:
-            prompt = prompt.replace('{{history}}', fit_context(self.lines))
+            prompt = prompt.replace('{{history}}', fit_context(self.history))
         if '{{examples}}' in prompt:
             examples = list(map(self._replace, self.char.examples))
             prompt = prompt.replace('{{examples}}', fit_context(examples))
@@ -93,7 +94,7 @@ class chat:
         if self.emotion_classifier == None:
             self.enable_emotions()
         if text == None:
-            text = self.lines[-1].split(':',1)[-1]
+            text = self.history[-1].split(':',1)[-1]
         emotions = self.emotion_classifier(text)
         result = {}
         for e in emotions[0]:
@@ -103,7 +104,7 @@ class chat:
     def reg_var(self, name, handler, template=None):
         if template:
             handler=lambda:handler(self._replace(template))
-        self._var_handlers[name] = handler
+        self._var_handlers[name.lower()] = handler
 
     def _replace(self, text):
         vars = {
@@ -126,14 +127,14 @@ class chat:
             except ValueError:
                 break
             try:
-                r = vars[v]
+                r = vars[v.lower()]
                 if r is None:
                     r = ''
             except KeyError:
                 if v.startswith('#if'):
                     text = text[:s]+text[e+2:]
                     v = v[3:].strip()
-                    r = vars.get(v)
+                    r = vars.get(v.lower())
                     try:
                         close='{{/if}}'
                         cs = text.index(close,s)
@@ -153,6 +154,7 @@ class chat:
                     v = v[:s2]
                 except ValueError:
                     pass
+                v = v.lower()
                 handler = self._var_handlers.get(v)
                 if handler:
                     if a != None:
