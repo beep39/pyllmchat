@@ -61,6 +61,16 @@ class char_desc:
             f.write(r.content)
         return t.name
 
+    def list(self):
+        lst = []
+        try:
+            lst = listdir(self.dir)
+        except:
+            pass
+        for i in range(len(lst)):
+            lst[i] = lst[i].rstrip('.png')
+        return lst
+
     def _load_data(self, data):
         if data[:8] != b'\x89PNG\r\n\x1a\n':
             return False
@@ -109,9 +119,3 @@ class char_desc:
         #for k in data:
         #    print('@'+k+':', data[k])
         return True
-
-    def list(self):
-        lst = listdir(self.dir)
-        for i in range(len(lst)):
-            lst[i] = lst[i].rstrip('.png')
-        return lst
