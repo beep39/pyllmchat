@@ -19,8 +19,7 @@ class backend_exllama(backend):
         super().__init__()
         self.max_context_length = max_context_length
         tokenizer_path = path.join(model_directory, "tokenizer.model")
-        self._tokenizer = ExLlamaTokenizer(tokenizer_path)
-
+        tokenizer = ExLlamaTokenizer(tokenizer_path)
         model_config_path = path.join(model_directory, "config.json")
         st_pattern = path.join(model_directory, "*.safetensors")
         model_path = glob(st_pattern)[0]
@@ -28,13 +27,13 @@ class backend_exllama(backend):
         config.max_seq_len = max_context_length
         config.model_path = model_path
         self._model = ExLlama(config)
-        self._cache = ExLlamaCache(self._model)
-        self._generator = ExLlamaGenerator(self._model, self._tokenizer, self._cache)
+        cache = ExLlamaCache(self._model)
+        self._generator = ExLlamaGenerator(self._model, tokenizer, cache)
         self._generator.settings.token_repetition_penalty_sustain = config.max_seq_len
-        self._generator.disallow_tokens([self._tokenizer.eos_token_id])
+        self._generator.disallow_tokens([tokenizer.eos_token_id])
 
     def tokens_count(self, text):
-        return self._tokenizer.encode(text).shape[-1]
+        return self._generator.tokenizer.encode(text).shape[-1]
 
     def generate(self, prompt, stop, on_stream=None):
         self._generator.settings.temperature = self.temperature
@@ -57,3 +56,15 @@ class backend_exllama(backend):
         result = self.process(generate, stop, on_stream)
         self._generator.end_beam_search()
         return result
+
+    def unload(self):
+        if self._model is None:
+            return
+
+        self._model.free_unmanaged()
+        self._model = None
+        self._generator = None
+
+        import gc, torch
+        gc.collect()
+        torch.cuda.empty_cache()

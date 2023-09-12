@@ -21,7 +21,6 @@ class char_desc:
         if not '/' in name:
             name = self.dir+name
         with open(name, 'rb') as f:
-            data = None
             try:
                 if f.read(8) != b'\x89PNG\r\n\x1a\n':
                     return False
@@ -37,7 +36,6 @@ class char_desc:
                     return self._load_json(text)
             except:
                 return False
-            return self._load_json(data)
 
     def download(self, url):
         base = 'chub.ai/characters/'
@@ -116,6 +114,4 @@ class char_desc:
         else:
             self.examples = None
         self.creator_notes = data.get('creator_notes')
-        #for k in data:
-        #    print('@'+k+':', data[k])
         return True
