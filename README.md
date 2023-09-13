@@ -5,6 +5,7 @@ Python api for chatting with [chub.ai](https://www.chub.ai/) characters inspired
 Currently supported backends:
 - [KoboldAI](https://github.com/LostRuins/koboldcpp) (via api)
 - [exllama](https://github.com/turboderp/exllama) can be [installed with pip](https://github.com/jllllll/exllama) or dropped in project root.
+- [exllamav2](https://github.com/turboderp/exllamav2) can be dropped in project root.
 
 Character cards can be loaded with <code>chat.char.load</code>
 

@@ -1,4 +1,4 @@
-import random
+import random, json
 from datetime import datetime
 from char_desc import char_desc
 from user_desc import user_desc
@@ -23,8 +23,8 @@ class chat:
         self.template = default_template
         self._var_handlers = {}
 
-        self.reg_var('time', lambda args=None: datetime.now().strftime(' %I:%M %p').replace(' 0',''))
-        self.reg_var('date', lambda args=None: datetime.now().strftime('%B %d, %Y').replace(' 0',' '))
+        self.reg_var('time', lambda _=None: datetime.now().strftime(' %I:%M %p').replace(' 0',''))
+        self.reg_var('date', lambda _=None: datetime.now().strftime('%B %d, %Y').replace(' 0',' '))
         self.reg_var('random', lambda args=['']: random.choice(args))
 
     def start(self):
@@ -34,8 +34,8 @@ class chat:
             greeting = self.char.greeting
             if not isinstance(greeting, str):
                 greeting = random.choice(greeting)
-            greeting = self._replace(greeting)
-            self.history.append(self.char.name+': '+greeting)
+            greeting = self._replace(greeting).replace('\r','')
+        self.history.append(self.char.name+': '+greeting)
         return greeting
 
     def say(self, text, on_stream=None, name='{{user}}', answer_as='{{char}}'):
@@ -82,7 +82,7 @@ class chat:
         if '{{examples}}' in prompt:
             examples = list(map(self._replace, self.char.examples))
             prompt = prompt.replace('{{examples}}', fit_context(examples))
-        return self.backend.generate(prompt, stop, on_stream)
+        return self.backend.generate(prompt.replace('\r',''), stop, on_stream).replace('\r','')
 
     def enable_emotions(self, model = None):
         if model == None:
@@ -100,12 +100,43 @@ class chat:
         for e in emotions[0]:
             result[e['label']] = e['score']
         return result
- 
+
     def reg_var(self, name, handler, template=None):
         if template:
             handler=lambda:handler(self._replace(template))
         self._var_handlers[name.lower()] = handler
 
+    def save(self, path):
+        save = {}
+        save['char'] = self.char.name
+        user = {'name':self.user.name}
+        if self.user.description:
+            user['description'] = self.user.description
+        save['user'] = user
+        if self.system:
+            save['system'] = self.system
+        save['history'] = self.history
+        with open(path, "w") as f:
+            json.dump(save, f)
+
+    def load(self, path):
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+                char = data['char']
+                if char != self.char.name:
+                    if char in self.char.list():
+                        self.char.load(char)
+                user = data.get('user')
+                if user:
+                    self.user.name = user['name']
+                    self.user.description = user.get('description')
+                self.system = data.get('system')
+                self.history = data['history']
+        except FileNotFoundError:
+            return False
+        return True
+ 
     def _replace(self, text):
         vars = {
             'user':self.user.name,

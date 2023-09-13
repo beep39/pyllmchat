@@ -30,7 +30,6 @@ class backend_exllama(backend):
         cache = ExLlamaCache(self._model)
         self._generator = ExLlamaGenerator(self._model, tokenizer, cache)
         self._generator.settings.token_repetition_penalty_sustain = config.max_seq_len
-        self._generator.disallow_tokens([tokenizer.eos_token_id])
 
     def tokens_count(self, text):
         return self._generator.tokenizer.encode(text).shape[-1]
@@ -39,7 +38,7 @@ class backend_exllama(backend):
         self._generator.settings.temperature = self.temperature
         self._generator.settings.top_p = self.top_p
         self._generator.settings.top_k = self.top_k
-        self._generator.settings.typical = 0.0
+        self._generator.settings.typical = self.typical
         self._generator.settings.token_repetition_penalty_max = self.rep_pen
 
         ids = self._generator.tokenizer.encode(prompt, max_seq_len=self.max_context_length)

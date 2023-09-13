@@ -1,7 +1,7 @@
 from backend import backend
 import requests
-import tiktoken
 import json
+import tiktoken
 
 class backend_kobold(backend):
     def __init__(self, api_url, max_context_length=None):
@@ -37,7 +37,7 @@ class backend_kobold(backend):
                 "top_a": 0,
                 "top_k": self.top_k,
                 "top_p": self.top_p,
-                "typical": 1,
+                "typical": self.typical,
 
                 "sampler_order": self.sampler_order,
                 'use_story': False,
