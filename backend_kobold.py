@@ -8,10 +8,17 @@ class backend_kobold(backend):
         super().__init__()
         if not api_url.endswith('/'):
             api_url += '/'
-        api_url += 'extra/generate/stream/'
+
         if max_context_length:
             self.max_context_length = max_context_length
-        self.api_url = api_url
+        else:
+            try:
+                r = requests.get(api_url+'extra/true_max_context_length')
+                self.max_context_length = r.json()['value']
+            except:
+                print('unable to get max context, using default')
+
+        self.api_url = api_url + 'extra/generate/stream/'
         self.sampler_order = [6,0,1,3,4,2,5]
         self.pad_tokens = 64
         self._tokenizer = tiktoken.get_encoding("gpt2")

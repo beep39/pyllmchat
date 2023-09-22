@@ -2,7 +2,7 @@ from chat import chat
 from backend_kobold import backend_kobold
 #from backend_exllama import backend_exllama
 
-backend = backend_kobold('http://localhost:5001/api', 2048)
+backend = backend_kobold('http://localhost:5001/api')
 #backend = backend_exllama('Pygmalion-13B-SuperHOT-8K-GPTQ', 8196)
 backend.max_length = 100
 chat = chat(backend)
