@@ -7,6 +7,7 @@ class backend():
         self.top_k = 0
         self.top_p = 0.95
         self.typical = 0.0
+        self._cancel = False
 
     def tokens_count(self, text):
         return len(text)
@@ -16,6 +17,9 @@ class backend():
 
     def generate(self, prompt, stop, on_stream=None):
         return None
+
+    def cancel(self):
+        self._cancel = True
 
     def process(self, generate, stop, on_stream=None):
         def match_stop(text):
@@ -29,7 +33,11 @@ class backend():
 
         offset = 0
         result = ''
+        self._cancel = False
         for _ in range(self.max_length):
+            if self._cancel:
+                break
+
             generated = generate()
             if generated == None:
                 break
@@ -46,4 +54,3 @@ class backend():
         if on_stream:
             on_stream(result, True, offset)
         return result
-
