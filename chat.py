@@ -4,9 +4,11 @@ from char_desc import char_desc
 from user_desc import user_desc
 
 default_template ='''{{#if system}}{{system}}
+{{/if}}{{#if wiBefore}}{{wiBefore}}
 {{/if}}{{#if description}}{{description}}
 {{/if}}{{#if personality}}{{personality}}
 {{/if}}{{#if scenario}}{{scenario}}
+{{/if}}{{#if wiAfter}}{{wiAfter}}
 {{/if}}Then the roleplay chat between {{user}} and {{char}} begins.
 {{#if examples}}{{examples}}
 {{/if}}<START>
@@ -20,6 +22,7 @@ class chat:
         self.history = []
         self.emotion_classifier = None
         self.system = None
+        self.lorebooks = []
         self.template = default_template
         self._var_handlers = {}
 

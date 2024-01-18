@@ -2,9 +2,10 @@ from os import listdir, path, makedirs
 import struct, json
 from base64 import b64decode
 import requests
+from lorebook import lorebook
 
 class char_desc:
-    def __init__(self):
+    def __init__(self, filename = None):
         self.name = 'Character'
         self.description = None
         self.personality = None
@@ -12,16 +13,19 @@ class char_desc:
         self.examples = None
         self.creator_notes = None
         self.scenario = None
+        self.lorebook = None
         self.dir = 'characters/'
+        if filename:
+            self.load(filename)
 
     def load(self, name):
         if not name.endswith('.png'):
             name += '.png'
         name.replace('\\','/')
-        if not '/' in name:
+        if not '/' in name and self.dir:
             name = self.dir+name
-        with open(name, 'rb') as f:
-            try:
+        try:
+            with open(name, 'rb') as f:
                 if f.read(8) != b'\x89PNG\r\n\x1a\n':
                     return False
                 while(True):
@@ -34,8 +38,9 @@ class char_desc:
                         continue
                     text = b64decode(f.read(l-6)).decode('UTF-8')
                     return self._load_json(text)
-            except:
-                return False
+        except Exception as e: 
+            print('char_desc:',e)
+            return False
 
     def download(self, url):
         base = 'chub.ai/characters/'
@@ -55,9 +60,10 @@ class char_desc:
         t._load_data(r.content)
         if not path.exists(self.dir):
             makedirs(self.dir)
-        with open(path.join(self.dir, t.name)+'.png', 'wb') as f:
+        savename = ''.join(filter(lambda c: c not in '<>"|\\/\t\b\0', t.name))
+        with open(path.join(self.dir, savename)+'.png', 'wb') as f:
             f.write(r.content)
-        return t.name
+        return savename
 
     def list(self):
         lst = []
@@ -114,4 +120,8 @@ class char_desc:
         else:
             self.examples = None
         self.creator_notes = data.get('creator_notes')
+        character_book = data.get('character_book')
+        if character_book:
+            self.lorebook = lorebook()
+            self.lorebook.load_json(character_book)
         return True
