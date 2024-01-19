@@ -2,6 +2,7 @@ import random, json
 from datetime import datetime
 from char_desc import char_desc
 from user_desc import user_desc
+import dice
 
 default_template ='''{{#if system}}{{system}}
 {{/if}}{{#if wiBefore}}{{wiBefore}}
@@ -24,11 +25,16 @@ class chat:
         self.system = None
         self.lorebooks = []
         self.template = default_template
+        self.example_separator = '<START>'
         self._var_handlers = {}
 
         self.reg_var('time', lambda _=None: datetime.now().strftime(' %I:%M %p').replace(' 0',''))
         self.reg_var('date', lambda _=None: datetime.now().strftime('%B %d, %Y').replace(' 0',' '))
+        self.reg_var('weekday', lambda _=None: datetime.now().strftime('%A'))
+        self.reg_var('isodate', lambda _=None: datetime.now().date().isoformat())
+        self.reg_var('isotime', lambda _=None: datetime.now().strftime('%X')) #%H:%M
         self.reg_var('random', lambda args=['']: random.choice(args))
+        self.reg_var('roll', lambda f=['1d20']: str(dice.roll(f[0])))
 
     def start(self):
         self.history = []
@@ -42,13 +48,17 @@ class chat:
         return greeting
 
     def say(self, text, on_stream=None, name='{{user}}', answer_as='{{char}}'):
-        self.history.append(self._replace(name+': '+text))
+        if text:
+            self.history.append(self._replace(name+': '+text))
         if answer_as:
             self.history.append(self._replace(answer_as) + ': ')
             return self.regenerate(on_stream)
 
     def regenerate(self, on_stream=None):
-        self.history[-1] = self.history[-1].split(':',1)[0] + ': '
+        if self.history:
+            self.history[-1] = self.history[-1].split(':',1)[0] + ': '
+        else:
+            self.history = [self.char.name+': ']
         stop = '\n'+self.user.name+':'
         result = self.prompt(self.template, stop, on_stream)
         if not result:
@@ -61,15 +71,54 @@ class chat:
     def prompt(self, text, stop, on_stream=None, max_length=None):
         if not max_length:
             max_length = self.backend.max_length
-        prompt = self._replace(text)
+
+        vars = {
+            'user':self.user.name,
+            'char':self.char.name,
+            'system':self.system,
+            'description':self.char.description,
+            'personality':self.char.personality,
+            'scenario':self.char.scenario,
+            'template':self.template
+        }
+
+        def process_worldinfo(lorebook):
+            if not lorebook or not lorebook.entries:
+                return
+
+            #ToDo: order, recursive
+            history = self.history[-lorebook.scan_depth:]
+            used_groups = set()
+            for e in lorebook.entries:
+                if e.group and e.group in used_groups:
+                    continue
+
+                for h in history:
+                    if e.match(h):
+                        v = e.position.lower()
+                        try:
+                            vars[v] += '\n'+e.content
+                        except:
+                            vars[v] = e.content
+                        if e.group:
+                            used_groups.add(e.group)
+                        break
+
+        process_worldinfo(self.char.lorebook)
+        for l in self.lorebooks:
+            process_worldinfo(l)
+
+        prompt = self._replace(text, vars, ['history','examples'])
         pc = self.backend.tokens_count(prompt)
-        def fit_context(lines):
+        def fit_context(lines,replace):
             if not lines:
                 return ''
             nonlocal pc
             result = ''
             first = True
             for l in reversed(lines):
+                if replace:
+                    l = self._replace(l)
                 if not first:
                     l = l+'\n'
                 else:
@@ -80,11 +129,12 @@ class chat:
                 pc+=c
                 result=l+result
             return result
+
         if '{{history}}' in prompt:
-            prompt = prompt.replace('{{history}}', fit_context(self.history))
+            prompt = self._replace(prompt, {'history': fit_context(self.history, False)},['examples'])
         if '{{examples}}' in prompt:
-            examples = list(map(self._replace, self.char.examples))
-            prompt = prompt.replace('{{examples}}', fit_context(examples))
+            examples = fit_context(self.char.examples, True).replace('<START>', self.example_separator)
+            prompt = self._replace(prompt, {'examples': examples})
         return self.backend.generate(prompt.replace('\r',''), stop, on_stream).replace('\r','')
 
     def enable_emotions(self, model = None):
@@ -139,17 +189,10 @@ class chat:
         except FileNotFoundError:
             return False
         return True
- 
-    def _replace(self, text):
-        vars = {
-            'user':self.user.name,
-            'char':self.char.name,
-            'system':self.system,
-            'description':self.char.description,
-            'personality':self.char.personality,
-            'scenario':self.char.scenario,
-            'template':self.template
-        }
+
+    def _replace(self, text, vars = None, ignore = None):
+        if vars is None:
+            vars = { 'user':self.user.name, 'char':self.char.name }
         s = 0
         while True:
             v = None
@@ -166,11 +209,16 @@ class chat:
                     r = ''
             except KeyError:
                 if v.startswith('#if'):
-                    text = text[:s]+text[e+2:]
                     v = v[3:].strip()
-                    r = vars.get(v.lower())
+                    vl = v.lower()
+                    r = vars.get(vl)
                     try:
                         close='{{/if}}'
+                        if ignore and vl in ignore:
+                            cs = text.index(close,s)
+                            s = cs+len(close)
+                            continue
+                        text = text[:s]+text[e+2:]
                         cs = text.index(close,s)
                         if r:
                             text = text[:cs]+text[cs+len(close):]
@@ -187,16 +235,20 @@ class chat:
                     a = v[s2+1:v.index(')',s2)]
                     v = v[:s2]
                 except ValueError:
-                    pass
-                v = v.lower()
-                handler = self._var_handlers.get(v)
+                    try:
+                        s2 = v.index(':')
+                        a = v[s2+1:]
+                        v = v[:s2]
+                    except ValueError:
+                        pass
+                handler = self._var_handlers.get(v.lower())
                 if handler:
                     if a != None:
                         r = handler(a.split(','))
                     else:
                         r = handler()
                 else:
-                    if v != 'history' and v != 'examples': #filled last
+                    if not ignore or not v.lower() in ignore:
                         print('unrecognized var:',v)
                     s = e+2
                     continue
