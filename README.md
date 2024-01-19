@@ -3,6 +3,8 @@
 Python api for chatting with [chub.ai](https://www.chub.ai/) characters inspired by [SillyTavern](https://github.com/SillyTavern/SillyTavern) 
 
 Currently supported backends:
+- [Tabbyapi](https://github.com/theroyallab/tabbyAPI)
+- [LLamacpp](https://github.com/ggerganov/llama.cpp) (via api)
 - [KoboldAI](https://github.com/LostRuins/koboldcpp) (via api)
 - [exllama](https://github.com/turboderp/exllama) can be [installed with pip](https://github.com/jllllll/exllama) or dropped in project root.
 - [exllamav2](https://github.com/turboderp/exllamav2) can be dropped in project root.
