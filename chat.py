@@ -137,6 +137,9 @@ class chat:
             prompt = self._replace(prompt, {'examples': examples})
         return self.backend.generate(prompt.replace('\r',''), stop, on_stream).replace('\r','')
 
+    def cancel(self):
+        self.backend.cancel()
+
     def enable_emotions(self, model = None):
         if model == None:
             model = 'j-hartmann/emotion-english-distilroberta-base'

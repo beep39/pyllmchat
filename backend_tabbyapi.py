@@ -55,9 +55,16 @@ class backend_tabbyapi(backend):
             def generate():
                 for line in lines:
                     if line.startswith('data:'):
+                        line = line[6:]
+                        if line == '[DONE]':
+                            return None
                         nonlocal result
-                        result += json.loads(line[5:])['choices'][0]['text']
-                        return result
+                        try:
+                            result += json.loads(line)['choices'][0]['text']
+                            return result
+                        except Exception as e:
+                            print('backend_tabbyapi',type(e),e,'line:',line)
+                            pass
                 return None
             return self.process(generate, stop, on_stream)
         except Exception as e:
