@@ -2,13 +2,13 @@ class backend():
     def __init__(self):
         self.max_context_length = 2048
         self.max_length = 150
-        self.temperature = 1.1
+        self.temperature = 0.7
         self.rep_pen = 1.11
         self.rep_pen_range = 500
         self.top_k = 0
-        self.top_p = 1.0
-        self.min_p = 0.95
-        self.typical = 0.0
+        self.top_p = 0.95
+        self.min_p = 0.05
+        self.typical = 1.0
         self._cancel = False
 
     def tokens_count(self, text):

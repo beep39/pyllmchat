@@ -11,8 +11,8 @@ class backend_llamacpp(backend):
             self.max_context_length = max_context_length
         else:
             try:
-                r = requests.get(api_url+'model.json')
-                self.max_context_length = r.json()['n_ctx']
+                r = requests.get(api_url+'props')
+                self.max_context_length = r.json()['default_generation_settings']['n_ctx']
             except:
                 print('unable to get max context, using default')
         self.api_url = api_url
